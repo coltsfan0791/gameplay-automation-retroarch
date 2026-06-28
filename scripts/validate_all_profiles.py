@@ -10,6 +10,7 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from perception.config import resolve_screenshot_config  # noqa: E402
+from perception.regions import format_region, load_regions  # noqa: E402
 from scenarios.scripted_playback import (  # noqa: E402
     _build_sequence,
     _discover_profiles,
@@ -32,6 +33,15 @@ def _default_safety_args() -> argparse.Namespace:
     )
 
 
+def _format_regions(regions) -> list[str]:
+    if not regions:
+        return ["Regions: none"]
+    lines = [f"Regions: {len(regions)}"]
+    for region in sorted(regions.values(), key=lambda item: item.name):
+        lines.append(f"- {format_region(region)}")
+    return lines
+
+
 def main() -> None:
     targets = [PROJECT_ROOT / "config" / "default.yaml", *_discover_profiles(PROJECT_ROOT)]
     if not targets:
@@ -46,6 +56,7 @@ def main() -> None:
             metadata = _profile_metadata(config, target)
             safety = _resolve_safety_settings(config, _default_safety_args())
             screenshot = resolve_screenshot_config(config, project_root=PROJECT_ROOT)
+            regions = load_regions(config)
         except Exception as exc:  # noqa: BLE001 - CLI validator should report all profile failures.
             failures.append(f"{display}: {exc}")
             print(f"FAIL: {display}")
@@ -62,6 +73,8 @@ def main() -> None:
             f"enabled={screenshot.enabled} backend={screenshot.backend} monitor_index={screenshot.monitor_index} "
             f"output_folder={screenshot.output_folder} file_prefix={screenshot.file_prefix} region={screenshot.region}"
         )
+        for line in _format_regions(regions):
+            print(f"  {line}")
         for line in _summarize_events(events).splitlines():
             print(f"  {line}")
 
