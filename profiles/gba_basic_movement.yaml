@@ -1,0 +1,50 @@
+runtime:
+  target_fps: 60
+  max_jitter_ms: 4
+
+logging:
+  enabled: true
+  folder: logs
+  file_prefix: gba_basic_movement
+
+playback:
+  run: gba_basic_movement
+  macros:
+    step_right:
+      - action: right
+        hold_seconds: 0.12
+      - wait_seconds: 0.08
+
+    step_left:
+      - action: left
+        hold_seconds: 0.12
+      - wait_seconds: 0.08
+
+    step_up:
+      - action: up
+        hold_seconds: 0.12
+      - wait_seconds: 0.08
+
+    step_down:
+      - action: down
+        hold_seconds: 0.12
+      - wait_seconds: 0.08
+
+    gba_basic_movement:
+      - repeat: 3
+        sequence:
+          - use_macro: step_right
+      - repeat: 3
+        sequence:
+          - use_macro: step_left
+      - repeat: 2
+        sequence:
+          - use_macro: step_up
+      - repeat: 2
+        sequence:
+          - use_macro: step_down
+      - action: a
+        hold_seconds: 0.08
+      - wait_seconds: 0.12
+      - action: b
+        hold_seconds: 0.08
