@@ -10,6 +10,7 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from perception.config import resolve_screenshot_config  # noqa: E402
+from perception.regions import format_region, load_regions  # noqa: E402
 from scenarios.scripted_playback import (  # noqa: E402
     _build_sequence,
     _load_config,
@@ -48,6 +49,15 @@ def _default_safety_args() -> argparse.Namespace:
     )
 
 
+def _print_regions(regions) -> None:
+    if not regions:
+        print("Regions: none")
+        return
+    print(f"Regions: {len(regions)}")
+    for region in sorted(regions.values(), key=lambda item: item.name):
+        print(f"- {format_region(region)}")
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = _build_arg_parser()
     args = parser.parse_args(argv)
@@ -67,6 +77,7 @@ def main(argv: list[str] | None = None) -> None:
     metadata = _profile_metadata(config_data, config_path)
     safety = _resolve_safety_settings(config_data, _default_safety_args())
     screenshot = resolve_screenshot_config(config_data, project_root=PROJECT_ROOT)
+    regions = load_regions(config_data)
 
     print(f"Config OK: {_profile_display_name(PROJECT_ROOT, config_path)}")
     print(f"Profile: {metadata['name']} | Risk: {metadata['risk_level']}")
@@ -78,6 +89,7 @@ def main(argv: list[str] | None = None) -> None:
         f"enabled={screenshot.enabled} backend={screenshot.backend} monitor_index={screenshot.monitor_index} "
         f"output_folder={screenshot.output_folder} file_prefix={screenshot.file_prefix} region={screenshot.region}"
     )
+    _print_regions(regions)
     print(_summarize_events(events))
     if args.show_events:
         _print_events(events)

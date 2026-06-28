@@ -23,6 +23,25 @@ perception:
     file_prefix: replace_with_profile_name
     region: null
 
+regions:
+  full_screen:
+    left: 0
+    top: 0
+    width: 1366
+    height: 768
+    description: Replace with the full target capture area.
+    tags:
+      - screen
+
+  example_region:
+    left: 0
+    top: 0
+    width: 320
+    height: 240
+    description: Replace with a named region used by this profile.
+    tags:
+      - diagnostic
+
 logging:
   enabled: true
   folder: logs

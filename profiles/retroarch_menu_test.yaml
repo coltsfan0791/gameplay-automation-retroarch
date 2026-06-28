@@ -14,6 +14,35 @@ safety:
   stop_key: q
   require_enter: false
 
+regions:
+  full_screen:
+    left: 0
+    top: 0
+    width: 1366
+    height: 768
+    description: Full captured monitor area.
+    tags:
+      - screen
+
+  menu_area:
+    left: 180
+    top: 80
+    width: 1000
+    height: 620
+    description: Broad RetroArch menu diagnostic area.
+    tags:
+      - menu
+      - diagnostic
+
+  top_left:
+    left: 0
+    top: 0
+    width: 320
+    height: 240
+    description: Top-left diagnostic area.
+    tags:
+      - diagnostic
+
 logging:
   enabled: true
   folder: logs

@@ -29,6 +29,44 @@ perception:
     #   width: 1280
     #   height: 720
 
+regions:
+  full_screen:
+    left: 0
+    top: 0
+    width: 1366
+    height: 768
+    description: Full captured monitor area from the default screenshot monitor.
+    tags:
+      - screen
+
+  top_left:
+    left: 0
+    top: 0
+    width: 320
+    height: 240
+    description: Small top-left diagnostic region.
+    tags:
+      - diagnostic
+
+  center_area:
+    left: 250
+    top: 120
+    width: 860
+    height: 520
+    description: Large center-screen diagnostic region.
+    tags:
+      - diagnostic
+      - center
+
+  bottom_band:
+    left: 0
+    top: 560
+    width: 1366
+    height: 208
+    description: Bottom screen band for menus, prompts, or dialog-style UI.
+    tags:
+      - bottom-ui
+
 input:
   backend: vgamepad
   device: xbox360
