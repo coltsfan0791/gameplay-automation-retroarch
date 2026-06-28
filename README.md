@@ -7,10 +7,11 @@ This folder contains a staged automation framework for controlling RetroArch ext
 - `src/core/interfaces.py`: shared contracts for input adapters and perception adapters.
 - `src/core/scheduler.py`: deterministic frame-timed control loop with safety guards.
 - `src/input/vgamepad_backend.py`: Windows virtual gamepad backend using `vgamepad`.
+- `src/perception/screenshot_backend.py`: diagnostic screenshot capture backend.
 - `src/scenarios/scripted_playback.py`: YAML-driven input sequence/profile replay runner.
-- `config/default.yaml`: default timing, macro, safety, and logging config.
+- `config/default.yaml`: default timing, macro, safety, perception, and logging config.
 - `profiles/`: reusable playback profile YAML files.
-- `logs/`: runtime JSONL traces for validation and replay comparison.
+- `logs/`: runtime JSONL traces and ignored local diagnostic output.
 
 ## Design goals
 
@@ -19,7 +20,7 @@ This folder contains a staged automation framework for controlling RetroArch ext
 - Log all dispatched actions with timestamps for drift analysis.
 - Keep macro authoring in YAML instead of editing Python for every route.
 - Keep profiles code-only: no ROMs, BIOS files, save states, screenshots, or private logs.
-- Prefer safe, testable, reversible steps before adding perception or autonomy.
+- Prefer safe, testable, reversible steps before adding autonomy.
 
 ## Quick start
 
@@ -41,13 +42,20 @@ python ".\src\scenarios\scripted_playback.py" --list-profiles
 python ".\src\scenarios\scripted_playback.py" --profile retroarch_menu_test --dry-run --show-events
 ```
 
-4. Run a profile with normal safety prompts/countdown:
+4. Capture a diagnostic frame without pressing controller buttons:
+
+```powershell
+python ".\scripts\capture_sample_frame.py" --list-monitors
+python ".\scripts\capture_sample_frame.py" --profile retroarch_menu_test
+```
+
+5. Run a profile with normal safety prompts/countdown:
 
 ```powershell
 python ".\src\scenarios\scripted_playback.py" --profile retroarch_menu_test
 ```
 
-5. Inspect logs in `logs/`.
+6. Inspect ignored local output in `logs/`.
 
 ## Default config mode
 
@@ -204,6 +212,51 @@ python ".\src\scenarios\scripted_playback.py" --profile retroarch_menu_test --re
 - On Windows, the optional console stop key defaults to `q` while the terminal is focused.
 - The scheduler releases any buttons it pressed before stopping.
 - Log rows now include `status: ok`, `status: stopped`, or `status: error`.
+
+## Phase 7: perception foundation
+
+Phase 7 adds screenshot capture for observation/debugging only.
+
+No OCR, template matching, or autonomous decision-making is included yet.
+
+### Screenshot config
+
+```yaml
+perception:
+  screenshot:
+    enabled: true
+    backend: mss
+    monitor_index: 1
+    output_folder: logs/screenshots
+    file_prefix: sample_frame
+    region: null
+```
+
+### List monitors
+
+```powershell
+python ".\scripts\capture_sample_frame.py" --list-monitors
+```
+
+### Capture using config/default.yaml
+
+```powershell
+python ".\scripts\capture_sample_frame.py"
+```
+
+### Capture using a profile
+
+```powershell
+python ".\scripts\capture_sample_frame.py" --profile retroarch_menu_test
+```
+
+### Capture a region override
+
+```powershell
+python ".\scripts\capture_sample_frame.py" --profile retroarch_menu_test --left 0 --top 0 --width 1280 --height 720
+```
+
+Capture writes a PNG and a JSON metadata file under `logs/screenshots/` by default. Those outputs are ignored by Git.
 
 ## Included profiles
 
