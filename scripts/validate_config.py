@@ -9,6 +9,7 @@ SRC_ROOT = PROJECT_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
+from perception.config import resolve_screenshot_config  # noqa: E402
 from scenarios.scripted_playback import (  # noqa: E402
     _build_sequence,
     _load_config,
@@ -65,12 +66,18 @@ def main(argv: list[str] | None = None) -> None:
     events = _build_sequence(config_data)
     metadata = _profile_metadata(config_data, config_path)
     safety = _resolve_safety_settings(config_data, _default_safety_args())
+    screenshot = resolve_screenshot_config(config_data, project_root=PROJECT_ROOT)
 
     print(f"Config OK: {_profile_display_name(PROJECT_ROOT, config_path)}")
     print(f"Profile: {metadata['name']} | Risk: {metadata['risk_level']}")
     if metadata["description"]:
         print(f"Description: {metadata['description']}")
     print(f"Safety: countdown={safety['countdown_seconds']}s max_runtime={safety['max_runtime_seconds']}s stop_key={safety['stop_key']}")
+    print(
+        "Screenshot: "
+        f"enabled={screenshot.enabled} backend={screenshot.backend} monitor_index={screenshot.monitor_index} "
+        f"output_folder={screenshot.output_folder} file_prefix={screenshot.file_prefix} region={screenshot.region}"
+    )
     print(_summarize_events(events))
     if args.show_events:
         _print_events(events)
