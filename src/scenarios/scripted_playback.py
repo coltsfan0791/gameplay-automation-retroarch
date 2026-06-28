@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import math
 import sys
+import time
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -18,7 +20,7 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from core.interfaces import ActionEvent
-from core.scheduler import FrameScheduler
+from core.scheduler import FrameScheduler, PlaybackStopped
 from input.vgamepad_backend import VGamepadBackend
 
 
@@ -33,6 +35,43 @@ FALLBACK_SEQUENCE: tuple[ActionEvent, ...] = (
 DEFAULT_CONFIG_RELATIVE = Path("config") / "default.yaml"
 PROFILES_DIR_NAME = "profiles"
 PROFILE_SUFFIXES = (".yaml", ".yml")
+VALID_RISK_LEVELS = {"low", "medium", "high"}
+
+
+class ConsoleStopKey:
+    """Best-effort terminal stop key for Windows consoles.
+
+    Ctrl+C is still the primary universal emergency stop. This class adds an
+    optional single-character stop key when the terminal window is focused.
+    """
+
+    def __init__(self, *, enabled: bool, key: str | None) -> None:
+        self._enabled = enabled and bool(key)
+        self._key = (key or "").lower()
+        self._msvcrt = None
+
+        if self._enabled and sys.platform.startswith("win"):
+            try:
+                import msvcrt  # type: ignore[import-not-found]
+            except ImportError:
+                self._msvcrt = None
+            else:
+                self._msvcrt = msvcrt
+
+    @property
+    def available(self) -> bool:
+        return self._enabled and self._msvcrt is not None
+
+    def __call__(self) -> bool:
+        if not self.available:
+            return False
+
+        stop_requested = False
+        while self._msvcrt.kbhit():
+            key = self._msvcrt.getwch()
+            if key.lower() == self._key:
+                stop_requested = True
+        return stop_requested
 
 
 def _project_root() -> Path:
@@ -296,6 +335,84 @@ def _resolve_target_fps(config: dict[str, Any]) -> int:
     return target_fps
 
 
+def _profile_metadata(config: dict[str, Any], config_path: Path) -> dict[str, str]:
+    metadata = config.get("profile", config.get("metadata", {}))
+    if metadata is None:
+        metadata = {}
+    if not isinstance(metadata, dict):
+        raise ValueError("'profile'/'metadata' section must be a mapping when provided")
+
+    name = str(metadata.get("name") or config_path.stem)
+    description = str(metadata.get("description") or "")
+    risk_level = str(metadata.get("risk_level") or "low").lower().strip()
+    if risk_level not in VALID_RISK_LEVELS:
+        raise ValueError(f"Invalid profile risk_level: {risk_level}. Expected one of: {sorted(VALID_RISK_LEVELS)}")
+
+    return {
+        "name": name,
+        "description": description,
+        "risk_level": risk_level,
+    }
+
+
+def _resolve_safety_settings(config: dict[str, Any], args: argparse.Namespace) -> dict[str, Any]:
+    safety = config.get("safety", {})
+    if safety is None:
+        safety = {}
+    if not isinstance(safety, dict):
+        raise ValueError("'safety' section must be a mapping when provided")
+
+    countdown_seconds = args.countdown_seconds
+    if countdown_seconds is None:
+        countdown_seconds = safety.get("countdown_seconds", 3)
+    if args.no_countdown:
+        countdown_seconds = 0
+    countdown_seconds = _resolve_optional_positive_number(
+        countdown_seconds,
+        "safety.countdown_seconds",
+        allow_zero=True,
+    )
+
+    max_runtime_seconds = args.max_runtime_seconds
+    if max_runtime_seconds is None:
+        max_runtime_seconds = safety.get("max_runtime_seconds", 30)
+    max_runtime_seconds = _resolve_optional_positive_number(
+        max_runtime_seconds,
+        "safety.max_runtime_seconds",
+        allow_zero=False,
+    )
+
+    stop_key = args.stop_key if args.stop_key is not None else safety.get("stop_key", "q")
+    if stop_key is not None:
+        stop_key = str(stop_key).strip().lower()
+        if len(stop_key) != 1:
+            raise ValueError("stop_key must be a single character")
+
+    enable_console_stop = bool(safety.get("enable_console_stop", True)) and not args.no_stop_key
+    require_enter = bool(safety.get("require_enter", False)) or args.require_enter
+
+    return {
+        "countdown_seconds": countdown_seconds,
+        "max_runtime_seconds": max_runtime_seconds,
+        "stop_key": stop_key,
+        "enable_console_stop": enable_console_stop,
+        "require_enter": require_enter,
+    }
+
+
+def _resolve_optional_positive_number(value: Any, field_name: str, *, allow_zero: bool) -> float | None:
+    if value is None:
+        return None
+    if not isinstance(value, (int, float)):
+        raise ValueError(f"{field_name} must be a number or null")
+    if allow_zero:
+        if value < 0:
+            raise ValueError(f"{field_name} must be zero or positive")
+    elif value <= 0:
+        raise ValueError(f"{field_name} must be positive")
+    return float(value)
+
+
 def _summarize_events(events: list[ActionEvent]) -> str:
     action_counts = Counter(event.action for event in events)
     total_hold = sum(event.hold_seconds for event in events)
@@ -323,6 +440,38 @@ def _list_profiles(project_root: Path) -> None:
     print("Available profiles:")
     for profile in profiles:
         print(f"- {_profile_display_name(project_root, profile)}")
+
+
+def _print_preflight(
+    *,
+    config_path: Path,
+    project_root: Path,
+    metadata: dict[str, str],
+    events: list[ActionEvent],
+    safety: dict[str, Any],
+    stop_key: ConsoleStopKey,
+) -> None:
+    print(f"Using config: {_profile_display_name(project_root, config_path)}")
+    print(f"Profile: {metadata['name']} | Risk: {metadata['risk_level']}")
+    if metadata["description"]:
+        print(f"Description: {metadata['description']}")
+    print(_summarize_events(events))
+    print(f"Max runtime: {safety['max_runtime_seconds']}s")
+    print("Emergency stop: Ctrl+C")
+    if stop_key.available:
+        print(f"Console stop key: {safety['stop_key']} (terminal must be focused)")
+    elif safety["enable_console_stop"] and safety["stop_key"]:
+        print("Console stop key unavailable here; use Ctrl+C.")
+
+
+def _countdown(seconds: float) -> None:
+    if seconds <= 0:
+        return
+
+    whole_seconds = int(math.ceil(seconds))
+    for remaining in range(whole_seconds, 0, -1):
+        print(f"Starting in {remaining}... focus RetroArch now. Ctrl+C aborts.")
+        time.sleep(1.0)
 
 
 def _build_arg_parser() -> argparse.ArgumentParser:
@@ -354,6 +503,35 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Print every expanded event. Useful with --dry-run.",
     )
+    parser.add_argument(
+        "--no-countdown",
+        action="store_true",
+        help="Start immediately instead of using the configured safety countdown.",
+    )
+    parser.add_argument(
+        "--countdown-seconds",
+        type=float,
+        help="Override configured countdown seconds.",
+    )
+    parser.add_argument(
+        "--max-runtime-seconds",
+        type=float,
+        help="Override configured max runtime guard.",
+    )
+    parser.add_argument(
+        "--stop-key",
+        help="Single-character Windows console stop key. Ctrl+C always works.",
+    )
+    parser.add_argument(
+        "--no-stop-key",
+        action="store_true",
+        help="Disable optional console stop key polling.",
+    )
+    parser.add_argument(
+        "--require-enter",
+        action="store_true",
+        help="Require Enter before countdown/playback starts.",
+    )
     return parser
 
 
@@ -373,14 +551,37 @@ def main(argv: list[str] | None = None) -> None:
     )
     config = _load_config(config_path)
     events = _build_sequence(config)
-
-    print(f"Using config: {_profile_display_name(project_root, config_path)}")
+    metadata = _profile_metadata(config, config_path)
+    safety = _resolve_safety_settings(config, args)
+    stop_key = ConsoleStopKey(
+        enabled=bool(safety["enable_console_stop"]),
+        key=safety["stop_key"],
+    )
 
     if args.dry_run:
+        print(f"Using config: {_profile_display_name(project_root, config_path)}")
+        print(f"Profile: {metadata['name']} | Risk: {metadata['risk_level']}")
+        if metadata["description"]:
+            print(f"Description: {metadata['description']}")
         print(_summarize_events(events))
+        print(f"Max runtime: {safety['max_runtime_seconds']}s")
         if args.show_events:
             _print_events(events)
         return
+
+    _print_preflight(
+        config_path=config_path,
+        project_root=project_root,
+        metadata=metadata,
+        events=events,
+        safety=safety,
+        stop_key=stop_key,
+    )
+
+    if safety["require_enter"]:
+        input("Press Enter to start playback, or Ctrl+C to abort...")
+
+    _countdown(float(safety["countdown_seconds"] or 0))
 
     log_path = _resolve_log_path(project_root, config, config_path)
     backend = VGamepadBackend()
@@ -388,8 +589,17 @@ def main(argv: list[str] | None = None) -> None:
         backend=backend,
         target_fps=_resolve_target_fps(config),
         log_file=log_path,
+        max_runtime_seconds=safety["max_runtime_seconds"],
+        stop_requested=stop_key,
     )
-    scheduler.run(events)
+
+    try:
+        scheduler.run(events)
+    except PlaybackStopped as exc:
+        print(f"Playback stopped safely: {exc}")
+        if log_path is not None:
+            print(f"Log: {log_path}")
+        return
 
     if log_path is None:
         print(f"Playback complete. Events dispatched: {len(events)}. Logging disabled by config.")
