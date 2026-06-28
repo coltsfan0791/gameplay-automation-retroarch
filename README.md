@@ -8,6 +8,7 @@ This folder contains a staged automation framework for controlling RetroArch ext
 - `src/core/scheduler.py`: deterministic frame-timed control loop with safety guards.
 - `src/input/vgamepad_backend.py`: Windows virtual gamepad backend using `vgamepad`.
 - `src/perception/screenshot_backend.py`: diagnostic screenshot capture backend.
+- `src/perception/image_diagnostics.py`: read-only image stats/crop/compare helpers.
 - `src/scenarios/scripted_playback.py`: YAML-driven input sequence/profile replay runner.
 - `config/default.yaml`: default timing, macro, safety, perception, and logging config.
 - `profiles/`: reusable playback profile YAML files.
@@ -49,13 +50,19 @@ python ".\scripts\capture_sample_frame.py" --list-monitors
 python ".\scripts\capture_sample_frame.py" --profile retroarch_menu_test
 ```
 
-5. Run a profile with normal safety prompts/countdown:
+5. Run read-only image diagnostics:
+
+```powershell
+python ".\scripts\analyze_image.py" --image "logs\screenshots\sample_frame-YYYYMMDD-HHMMSS.png"
+```
+
+6. Run a profile with normal safety prompts/countdown:
 
 ```powershell
 python ".\src\scenarios\scripted_playback.py" --profile retroarch_menu_test
 ```
 
-6. Inspect ignored local output in `logs/`.
+7. Inspect ignored local output in `logs/`.
 
 ## Default config mode
 
@@ -257,6 +264,38 @@ python ".\scripts\capture_sample_frame.py" --profile retroarch_menu_test --left 
 ```
 
 Capture writes a PNG and a JSON metadata file under `logs/screenshots/` by default. Those outputs are ignored by Git.
+
+## Phase 8: image diagnostics
+
+Phase 8 adds read-only image utilities for captured screenshots.
+
+No OCR, template matching, or image-driven decisions are included.
+
+### Image stats
+
+```powershell
+python ".\scripts\analyze_image.py" --image "logs\screenshots\sample_frame-YYYYMMDD-HHMMSS.png"
+```
+
+### Crop a diagnostic region
+
+```powershell
+python ".\scripts\analyze_image.py" --image "logs\screenshots\sample_frame-YYYYMMDD-HHMMSS.png" --crop-output "logs\screenshots\crop.png" --left 0 --top 0 --width 320 --height 240
+```
+
+### Compare two screenshots
+
+```powershell
+python ".\scripts\analyze_image.py" --baseline "logs\screenshots\before.png" --candidate "logs\screenshots\after.png" --json-output "logs\screenshots\comparison.json"
+```
+
+### Capture before/after around a profile
+
+```powershell
+python ".\scripts\capture_profile_snapshots.py" --profile retroarch_menu_test --no-countdown
+```
+
+That command captures a before image, runs the selected profile using the existing safety layer, captures an after image, and writes a comparison JSON report. The report does not affect gameplay.
 
 ## Included profiles
 
