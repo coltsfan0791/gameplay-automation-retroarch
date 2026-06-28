@@ -22,7 +22,7 @@ logging:
 
 playback:
   sequence:
-    - action: a
+    - action: b
       hold_seconds: 0.08
     - action: right
       hold_seconds: 0.10
