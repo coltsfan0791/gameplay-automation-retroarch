@@ -23,6 +23,19 @@ This folder contains a staged automation framework for controlling RetroArch ext
 - Keep profiles code-only: no ROMs, BIOS files, save states, screenshots, or private logs.
 - Prefer safe, testable, reversible steps before adding autonomy.
 
+## Audit and roadmap docs
+
+Read these before starting the next phase:
+
+```text
+docs/AUDIT_AND_ROADMAP.md
+docs/AGENT_MODE_PLAYBOOK.md
+```
+
+`AUDIT_AND_ROADMAP.md` summarizes completed phases, known findings, and the optimized remaining phase order.
+
+`AGENT_MODE_PLAYBOOK.md` defines the branch/PR/test loop for future agent-led work.
+
 ## Quick start
 
 1. Install dependencies:
@@ -76,6 +89,20 @@ You can also point directly to a config file:
 
 ```powershell
 python ".\src\scenarios\scripted_playback.py" --config config/default.yaml
+```
+
+## Current phase status
+
+```text
+Phase 1: scaffold complete
+Phase 2: YAML macro runner complete
+Phase 3: expanded controller backend complete
+Phase 4: macro QoL complete
+Phase 5: profiles and examples complete
+Phase 6: safety and reliability complete
+Phase 7: perception foundation complete
+Phase 8: image diagnostics complete
+Next: Phase 9 named screen regions
 ```
 
 ## Phase 2: config-driven playback
@@ -296,6 +323,27 @@ python ".\scripts\capture_profile_snapshots.py" --profile retroarch_menu_test --
 ```
 
 That command captures a before image, runs the selected profile using the existing safety layer, captures an after image, and writes a comparison JSON report. The report does not affect gameplay.
+
+After the audit cleanup, before/after filenames use a single timestamp:
+
+```text
+sample_frame_before-YYYYMMDD-HHMMSS.png
+sample_frame_after-YYYYMMDD-HHMMSS.png
+```
+
+## Next phase: Phase 9 named screen regions
+
+Phase 9 should add reusable named regions so commands stop relying on one-off coordinates.
+
+Expected examples:
+
+```powershell
+python ".\scripts\list_regions.py" --profile retroarch_menu_test
+python ".\scripts\capture_region.py" --profile retroarch_menu_test --region dialog_box
+python ".\scripts\analyze_region.py" --profile retroarch_menu_test --region top_left
+```
+
+Read `docs/AUDIT_AND_ROADMAP.md` before implementing Phase 9.
 
 ## Included profiles
 
