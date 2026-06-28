@@ -1,0 +1,53 @@
+runtime:
+  target_fps: 60
+  max_jitter_ms: 4
+
+logging:
+  enabled: true
+  folder: logs
+  file_prefix: analog_stick_trigger_test
+
+playback:
+  run: analog_stick_trigger_test
+  macros:
+    left_stick_circle_cardinal:
+      - action: left_stick_up
+        hold_seconds: 0.18
+      - wait_seconds: 0.08
+      - action: left_stick_right
+        hold_seconds: 0.18
+      - wait_seconds: 0.08
+      - action: left_stick_down
+        hold_seconds: 0.18
+      - wait_seconds: 0.08
+      - action: left_stick_left
+        hold_seconds: 0.18
+      - wait_seconds: 0.08
+
+    right_stick_circle_cardinal:
+      - action: right_stick_up
+        hold_seconds: 0.18
+      - wait_seconds: 0.08
+      - action: right_stick_right
+        hold_seconds: 0.18
+      - wait_seconds: 0.08
+      - action: right_stick_down
+        hold_seconds: 0.18
+      - wait_seconds: 0.08
+      - action: right_stick_left
+        hold_seconds: 0.18
+      - wait_seconds: 0.08
+
+    analog_stick_trigger_test:
+      - use_macro: left_stick_circle_cardinal
+      - use_macro: right_stick_circle_cardinal
+      - action: lt
+        hold_seconds: 0.20
+      - wait_seconds: 0.10
+      - action: rt
+        hold_seconds: 0.20
+      - wait_seconds: 0.10
+      - chord:
+          - lt
+          - rt
+        hold_seconds: 0.20
