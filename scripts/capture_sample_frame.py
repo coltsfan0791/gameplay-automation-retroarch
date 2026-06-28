@@ -3,13 +3,13 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
-from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SRC_ROOT = PROJECT_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
+from perception.config import make_region, resolve_screenshot_config  # noqa: E402
 from perception.screenshot_backend import MssScreenshotBackend, ScreenshotRegion  # noqa: E402
 from scenarios.scripted_playback import (  # noqa: E402
     _load_config,
@@ -35,81 +35,18 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _screenshot_config(config: dict[str, Any]) -> dict[str, Any]:
-    perception = config.get("perception", {})
-    if perception is None:
-        perception = {}
-    if not isinstance(perception, dict):
-        raise ValueError("'perception' section must be a mapping when provided")
-
-    screenshot = perception.get("screenshot", {})
-    if screenshot is None:
-        screenshot = {}
-    if not isinstance(screenshot, dict):
-        raise ValueError("'perception.screenshot' section must be a mapping when provided")
-
-    return screenshot
-
-
-def _resolve_region(screenshot: dict[str, Any], args: argparse.Namespace) -> ScreenshotRegion | None:
+def _cli_region(args: argparse.Namespace) -> ScreenshotRegion | None:
     cli_region_values = [args.left, args.top, args.width, args.height]
-    if any(value is not None for value in cli_region_values):
-        if not all(value is not None for value in cli_region_values):
-            raise ValueError("Region CLI overrides require --left, --top, --width, and --height together")
-        return _make_region({
-            "left": args.left,
-            "top": args.top,
-            "width": args.width,
-            "height": args.height,
-        })
-
-    region = screenshot.get("region")
-    if region is None:
+    if not any(value is not None for value in cli_region_values):
         return None
-    if not isinstance(region, dict):
-        raise ValueError("'perception.screenshot.region' must be a mapping or null")
-    return _make_region(region)
-
-
-def _make_region(raw: dict[str, Any]) -> ScreenshotRegion:
-    required = ("left", "top", "width", "height")
-    missing = [key for key in required if key not in raw]
-    if missing:
-        raise ValueError(f"Screenshot region missing required keys: {missing}")
-
-    values = {key: raw[key] for key in required}
-    for key, value in values.items():
-        if not isinstance(value, int):
-            raise ValueError(f"Screenshot region '{key}' must be an integer")
-
-    if values["width"] <= 0 or values["height"] <= 0:
-        raise ValueError("Screenshot region width and height must be positive")
-
-    return ScreenshotRegion(
-        left=values["left"],
-        top=values["top"],
-        width=values["width"],
-        height=values["height"],
-    )
-
-
-def _resolve_output_dir(screenshot: dict[str, Any], args: argparse.Namespace) -> Path:
-    raw_folder = args.output_folder or screenshot.get("output_folder", "logs/screenshots")
-    path = Path(str(raw_folder)).expanduser()
-    if path.is_absolute():
-        return path
-    return PROJECT_ROOT / path
-
-
-def _resolve_file_prefix(screenshot: dict[str, Any], args: argparse.Namespace) -> str:
-    return str(args.file_prefix or screenshot.get("file_prefix", "sample_frame"))
-
-
-def _resolve_monitor_index(screenshot: dict[str, Any], args: argparse.Namespace) -> int:
-    value = args.monitor_index if args.monitor_index is not None else screenshot.get("monitor_index", 1)
-    if not isinstance(value, int):
-        raise ValueError("monitor_index must be an integer")
-    return value
+    if not all(value is not None for value in cli_region_values):
+        raise ValueError("Region CLI overrides require --left, --top, --width, and --height together")
+    return make_region({
+        "left": args.left,
+        "top": args.top,
+        "width": args.width,
+        "height": args.height,
+    })
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -127,21 +64,27 @@ def main(argv: list[str] | None = None) -> None:
 
     config_path = _resolve_config_path(PROJECT_ROOT, config=args.config, profile=args.profile)
     config = _load_config(config_path)
-    screenshot = _screenshot_config(config)
+    screenshot_config = resolve_screenshot_config(
+        config,
+        project_root=PROJECT_ROOT,
+        monitor_index_override=args.monitor_index,
+        output_folder_override=args.output_folder,
+        file_prefix_override=args.file_prefix,
+        region_override=_cli_region(args),
+    )
 
-    region = _resolve_region(screenshot, args)
-    output_dir = _resolve_output_dir(screenshot, args)
-    file_prefix = _resolve_file_prefix(screenshot, args)
-    monitor_index = _resolve_monitor_index(screenshot, args)
+    if not screenshot_config.enabled:
+        raise RuntimeError("perception.screenshot.enabled is false for this config/profile")
 
     result = backend.capture_png(
-        output_dir=output_dir,
-        file_prefix=file_prefix,
-        monitor_index=monitor_index,
-        region=region,
+        output_dir=screenshot_config.output_folder,
+        file_prefix=screenshot_config.file_prefix,
+        monitor_index=screenshot_config.monitor_index,
+        region=screenshot_config.region,
         metadata={
             "config_path": _profile_display_name(PROJECT_ROOT, config_path),
             "script": "scripts/capture_sample_frame.py",
+            "backend": screenshot_config.backend,
         },
     )
 
@@ -149,7 +92,7 @@ def main(argv: list[str] | None = None) -> None:
     print(f"Metadata: {result.metadata_path}")
     print(f"Size: {result.width}x{result.height}")
     if result.region is None:
-        print(f"Monitor: index {monitor_index} -> {result.monitor}")
+        print(f"Monitor: index {screenshot_config.monitor_index} -> {result.monitor}")
     else:
         print(f"Region: {result.region}")
 
