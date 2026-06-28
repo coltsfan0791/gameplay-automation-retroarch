@@ -1,6 +1,6 @@
 # Profile Schema
 
-Profiles are YAML files loaded by `src/scenarios/scripted_playback.py`.
+Profiles are YAML files loaded by `src/scenarios/scripted_playback.py` and perception tools such as `scripts/capture_sample_frame.py`.
 
 A profile may be passed by name:
 
@@ -32,6 +32,15 @@ safety:
   enable_console_stop: true
   stop_key: q
   require_enter: false
+
+perception:
+  screenshot:
+    enabled: true
+    backend: mss
+    monitor_index: 1
+    output_folder: logs/screenshots
+    file_prefix: my_profile
+    region: null
 
 logging:
   enabled: true
@@ -92,6 +101,40 @@ Fields:
 - `require_enter`: requires Enter before countdown/playback begins.
 
 `Ctrl+C` is always the universal emergency stop.
+
+## `perception.screenshot`
+
+```yaml
+perception:
+  screenshot:
+    enabled: true
+    backend: mss
+    monitor_index: 1
+    output_folder: logs/screenshots
+    file_prefix: my_profile
+    region: null
+```
+
+Fields:
+
+- `enabled`: whether screenshot capture is allowed for the selected config/profile.
+- `backend`: screenshot backend. Phase 7 supports only `mss`.
+- `monitor_index`: monitor to capture. `0` is usually the full virtual desktop; `1` is usually the primary monitor.
+- `output_folder`: where diagnostic PNG/JSON files are saved.
+- `file_prefix`: prefix for saved screenshot and metadata filenames.
+- `region`: optional rectangle to capture instead of the full selected monitor.
+
+Region example:
+
+```yaml
+region:
+  left: 0
+  top: 0
+  width: 1280
+  height: 720
+```
+
+Screenshot capture is diagnostic only in Phase 7. It does not perform OCR, template matching, or decisions.
 
 ## `logging`
 
@@ -214,6 +257,26 @@ Validate all profiles:
 
 ```powershell
 python ".\scripts\validate_all_profiles.py"
+```
+
+## Capture diagnostic screenshots
+
+List monitors:
+
+```powershell
+python ".\scripts\capture_sample_frame.py" --list-monitors
+```
+
+Capture with a profile:
+
+```powershell
+python ".\scripts\capture_sample_frame.py" --profile gba_basic_movement
+```
+
+Capture a specific region:
+
+```powershell
+python ".\scripts\capture_sample_frame.py" --profile gba_basic_movement --left 0 --top 0 --width 1280 --height 720
 ```
 
 ## Run with safety overrides
