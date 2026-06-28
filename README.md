@@ -7,8 +7,9 @@ This folder contains a staged automation framework for controlling RetroArch ext
 - `src/core/interfaces.py`: shared contracts for input adapters and perception adapters.
 - `src/core/scheduler.py`: deterministic frame-timed control loop.
 - `src/input/vgamepad_backend.py`: Windows virtual gamepad backend using `vgamepad`.
-- `src/scenarios/scripted_playback.py`: YAML-driven input sequence replay runner.
-- `config/default.yaml`: timing, backend, macro, and logging defaults.
+- `src/scenarios/scripted_playback.py`: YAML-driven input sequence/profile replay runner.
+- `config/default.yaml`: default timing, macro, and logging config.
+- `profiles/`: reusable playback profile YAML files.
 - `logs/`: runtime JSONL traces for validation and replay comparison.
 
 ## Design goals
@@ -17,6 +18,7 @@ This folder contains a staged automation framework for controlling RetroArch ext
 - Use a monotonic scheduler for repeatable timing.
 - Log all dispatched actions with timestamps for drift analysis.
 - Keep macro authoring in YAML instead of editing Python for every route.
+- Keep profiles code-only: no ROMs, BIOS files, save states, screenshots, or private logs.
 
 ## Quick start
 
@@ -26,19 +28,39 @@ This folder contains a staged automation framework for controlling RetroArch ext
 python -m pip install -r requirements.txt
 ```
 
-2. Validate the YAML config without sending controller input:
+2. List available profiles:
 
 ```powershell
-python ".\scripts\validate_config.py"
+python ".\src\scenarios\scripted_playback.py" --list-profiles
 ```
 
-3. Run scripted playback:
+3. Dry-run a profile without pressing controller buttons:
 
 ```powershell
-python "g:/VSC projects/gameplay-automation-retroarch/src/scenarios/scripted_playback.py"
+python ".\src\scenarios\scripted_playback.py" --profile retroarch_menu_test --dry-run --show-events
 ```
 
-4. Inspect logs in `g:/VSC projects/gameplay-automation-retroarch/logs/`.
+4. Run a profile:
+
+```powershell
+python ".\src\scenarios\scripted_playback.py" --profile retroarch_menu_test
+```
+
+5. Inspect logs in `logs/`.
+
+## Default config mode
+
+Running without arguments still uses `config/default.yaml`:
+
+```powershell
+python ".\src\scenarios\scripted_playback.py"
+```
+
+You can also point directly to a config file:
+
+```powershell
+python ".\src\scenarios\scripted_playback.py" --config config/default.yaml
+```
 
 ## Phase 2: config-driven playback
 
@@ -112,6 +134,50 @@ Internally, the scheduler logs that chord as `lb+rb`.
 
 Internally, the scheduler logs that wait as action `wait`.
 
+## Phase 5: profiles and examples
+
+Phase 5 turns one config file into a small profile library.
+
+### Run by profile name
+
+```powershell
+python ".\src\scenarios\scripted_playback.py" --profile gba_basic_movement
+```
+
+### Run by profile path
+
+```powershell
+python ".\src\scenarios\scripted_playback.py" --profile profiles\gba_basic_movement.yaml
+```
+
+### Dry-run before pressing anything
+
+```powershell
+python ".\src\scenarios\scripted_playback.py" --profile pokemon_menu_nav --dry-run --show-events
+```
+
+### Validate one profile
+
+```powershell
+python ".\scripts\validate_config.py" pokemon_menu_nav --show-events
+```
+
+### Validate every profile
+
+```powershell
+python ".\scripts\validate_all_profiles.py"
+```
+
+## Included profiles
+
+```text
+profiles/generic_controller_test.yaml
+profiles/retroarch_menu_test.yaml
+profiles/gba_basic_movement.yaml
+profiles/pokemon_menu_nav.yaml
+profiles/analog_stick_trigger_test.yaml
+```
+
 ## Safety / repo hygiene
 
-Do not commit ROMs, BIOS files, save states, copyrighted game files, or private logs. Keep the repository code-only.
+Do not commit ROMs, BIOS files, save states, copyrighted game files, screenshots, or private logs. Keep the repository code-only.
