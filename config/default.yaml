@@ -14,6 +14,21 @@ safety:
   stop_key: q
   require_enter: false
 
+perception:
+  screenshot:
+    enabled: true
+    backend: mss
+    monitor_index: 1
+    output_folder: logs/screenshots
+    file_prefix: sample_frame
+    region: null
+    # Example region:
+    # region:
+    #   left: 0
+    #   top: 0
+    #   width: 1280
+    #   height: 720
+
 input:
   backend: vgamepad
   device: xbox360

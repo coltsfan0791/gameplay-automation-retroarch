@@ -14,6 +14,15 @@ safety:
   stop_key: q
   require_enter: false
 
+perception:
+  screenshot:
+    enabled: true
+    backend: mss
+    monitor_index: 1
+    output_folder: logs/screenshots
+    file_prefix: replace_with_profile_name
+    region: null
+
 logging:
   enabled: true
   folder: logs

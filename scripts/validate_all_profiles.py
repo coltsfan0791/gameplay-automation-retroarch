@@ -9,6 +9,7 @@ SRC_ROOT = PROJECT_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
+from perception.config import resolve_screenshot_config  # noqa: E402
 from scenarios.scripted_playback import (  # noqa: E402
     _build_sequence,
     _discover_profiles,
@@ -44,6 +45,7 @@ def main() -> None:
             events = _build_sequence(config)
             metadata = _profile_metadata(config, target)
             safety = _resolve_safety_settings(config, _default_safety_args())
+            screenshot = resolve_screenshot_config(config, project_root=PROJECT_ROOT)
         except Exception as exc:  # noqa: BLE001 - CLI validator should report all profile failures.
             failures.append(f"{display}: {exc}")
             print(f"FAIL: {display}")
@@ -55,6 +57,11 @@ def main() -> None:
         if metadata["description"]:
             print(f"  Description: {metadata['description']}")
         print(f"  Safety: countdown={safety['countdown_seconds']}s max_runtime={safety['max_runtime_seconds']}s stop_key={safety['stop_key']}")
+        print(
+            "  Screenshot: "
+            f"enabled={screenshot.enabled} backend={screenshot.backend} monitor_index={screenshot.monitor_index} "
+            f"output_folder={screenshot.output_folder} file_prefix={screenshot.file_prefix} region={screenshot.region}"
+        )
         for line in _summarize_events(events).splitlines():
             print(f"  {line}")
 
