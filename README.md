@@ -5,10 +5,10 @@ This folder contains a staged automation framework for controlling RetroArch ext
 ## Architecture
 
 - `src/core/interfaces.py`: shared contracts for input adapters and perception adapters.
-- `src/core/scheduler.py`: deterministic frame-timed control loop.
+- `src/core/scheduler.py`: deterministic frame-timed control loop with safety guards.
 - `src/input/vgamepad_backend.py`: Windows virtual gamepad backend using `vgamepad`.
 - `src/scenarios/scripted_playback.py`: YAML-driven input sequence/profile replay runner.
-- `config/default.yaml`: default timing, macro, and logging config.
+- `config/default.yaml`: default timing, macro, safety, and logging config.
 - `profiles/`: reusable playback profile YAML files.
 - `logs/`: runtime JSONL traces for validation and replay comparison.
 
@@ -19,6 +19,7 @@ This folder contains a staged automation framework for controlling RetroArch ext
 - Log all dispatched actions with timestamps for drift analysis.
 - Keep macro authoring in YAML instead of editing Python for every route.
 - Keep profiles code-only: no ROMs, BIOS files, save states, screenshots, or private logs.
+- Prefer safe, testable, reversible steps before adding perception or autonomy.
 
 ## Quick start
 
@@ -40,7 +41,7 @@ python ".\src\scenarios\scripted_playback.py" --list-profiles
 python ".\src\scenarios\scripted_playback.py" --profile retroarch_menu_test --dry-run --show-events
 ```
 
-4. Run a profile:
+4. Run a profile with normal safety prompts/countdown:
 
 ```powershell
 python ".\src\scenarios\scripted_playback.py" --profile retroarch_menu_test
@@ -167,6 +168,42 @@ python ".\scripts\validate_config.py" pokemon_menu_nav --show-events
 ```powershell
 python ".\scripts\validate_all_profiles.py"
 ```
+
+## Phase 6: safety and reliability
+
+Phase 6 adds runtime safety controls before any computer vision or autonomous logic.
+
+### Safety config
+
+```yaml
+profile:
+  name: RetroArch menu test
+  description: Opens a menu, wiggles through entries, and backs out.
+  risk_level: low
+
+safety:
+  countdown_seconds: 3
+  max_runtime_seconds: 30
+  enable_console_stop: true
+  stop_key: q
+  require_enter: false
+```
+
+### Safety CLI overrides
+
+```powershell
+python ".\src\scenarios\scripted_playback.py" --profile retroarch_menu_test --no-countdown
+python ".\src\scenarios\scripted_playback.py" --profile retroarch_menu_test --countdown-seconds 5
+python ".\src\scenarios\scripted_playback.py" --profile retroarch_menu_test --max-runtime-seconds 10
+python ".\src\scenarios\scripted_playback.py" --profile retroarch_menu_test --require-enter
+```
+
+### Emergency stop
+
+- `Ctrl+C` is the universal emergency stop.
+- On Windows, the optional console stop key defaults to `q` while the terminal is focused.
+- The scheduler releases any buttons it pressed before stopping.
+- Log rows now include `status: ok`, `status: stopped`, or `status: error`.
 
 ## Included profiles
 
