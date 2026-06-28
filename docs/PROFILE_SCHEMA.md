@@ -17,9 +17,21 @@ python ".\src\scenarios\scripted_playback.py" --profile profiles\gba_basic_movem
 ## Top-level shape
 
 ```yaml
+profile:
+  name: My profile
+  description: Short explanation of what this macro does.
+  risk_level: low
+
 runtime:
   target_fps: 60
   max_jitter_ms: 4
+
+safety:
+  countdown_seconds: 3
+  max_runtime_seconds: 30
+  enable_console_stop: true
+  stop_key: q
+  require_enter: false
 
 logging:
   enabled: true
@@ -34,6 +46,23 @@ playback:
         hold_seconds: 0.08
 ```
 
+## `profile`
+
+```yaml
+profile:
+  name: GBA basic movement
+  description: Moves a GBA-style character and taps A/B.
+  risk_level: low
+```
+
+`risk_level` must be one of:
+
+```text
+low, medium, high
+```
+
+Risk level is informational for now. Use it honestly so dangerous/longer profiles are easy to recognize before playback.
+
 ## `runtime`
 
 ```yaml
@@ -42,6 +71,27 @@ runtime:
 ```
 
 `target_fps` controls the scheduler cadence. It must be a positive integer.
+
+## `safety`
+
+```yaml
+safety:
+  countdown_seconds: 3
+  max_runtime_seconds: 30
+  enable_console_stop: true
+  stop_key: q
+  require_enter: false
+```
+
+Fields:
+
+- `countdown_seconds`: delay before playback starts so you can focus RetroArch.
+- `max_runtime_seconds`: hard stop guard for runaway profiles.
+- `enable_console_stop`: enables the optional Windows terminal stop key.
+- `stop_key`: single-character terminal stop key. Default is `q`.
+- `require_enter`: requires Enter before countdown/playback begins.
+
+`Ctrl+C` is always the universal emergency stop.
 
 ## `logging`
 
@@ -53,6 +103,16 @@ logging:
 ```
 
 If `file_prefix` is omitted, the runner derives the log prefix from the selected config/profile filename.
+
+Log rows use status values:
+
+```text
+ok
+stopped
+error
+```
+
+Stopped/error rows also include `error_type` and `error`.
 
 ## `playback.run`
 
@@ -154,4 +214,12 @@ Validate all profiles:
 
 ```powershell
 python ".\scripts\validate_all_profiles.py"
+```
+
+## Run with safety overrides
+
+```powershell
+python ".\src\scenarios\scripted_playback.py" --profile gba_basic_movement --no-countdown
+python ".\src\scenarios\scripted_playback.py" --profile gba_basic_movement --max-runtime-seconds 10
+python ".\src\scenarios\scripted_playback.py" --profile gba_basic_movement --require-enter
 ```
