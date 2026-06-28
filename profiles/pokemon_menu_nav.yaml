@@ -1,0 +1,46 @@
+runtime:
+  target_fps: 60
+  max_jitter_ms: 4
+
+logging:
+  enabled: true
+  folder: logs
+  file_prefix: pokemon_menu_nav
+
+playback:
+  run: pokemon_menu_nav
+  macros:
+    open_pause_menu:
+      - action: start
+        hold_seconds: 0.08
+      - wait_seconds: 0.35
+
+    move_menu_cursor_down:
+      - action: down
+        hold_seconds: 0.08
+      - wait_seconds: 0.10
+
+    move_menu_cursor_up:
+      - action: up
+        hold_seconds: 0.08
+      - wait_seconds: 0.10
+
+    confirm_then_back:
+      - action: a
+        hold_seconds: 0.08
+      - wait_seconds: 0.30
+      - action: b
+        hold_seconds: 0.08
+      - wait_seconds: 0.20
+
+    pokemon_menu_nav:
+      - use_macro: open_pause_menu
+      - repeat: 2
+        sequence:
+          - use_macro: move_menu_cursor_down
+      - use_macro: confirm_then_back
+      - repeat: 2
+        sequence:
+          - use_macro: move_menu_cursor_up
+      - action: b
+        hold_seconds: 0.08
