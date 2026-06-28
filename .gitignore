@@ -1,12 +1,29 @@
+# Local editor settings
+.vscode/
+!.vscode/extensions.json
+!.vscode/tasks.json
+
+# Downloaded/exported browser artifacts
+Downloads/
+*.html_files/
+*_files/
+
+# Python cache and tooling
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
+# Virtual environments
 .venv/
 venv/
+env/
 
+# Logs and generated output
 logs/
-logs/screenshots/
-*.png
+captures/
+screenshots/
+diagnostics/
+*.log
 *.jsonl
