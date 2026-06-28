@@ -12,10 +12,12 @@ if str(SRC_ROOT) not in sys.path:
 from scenarios.scripted_playback import (  # noqa: E402
     _build_sequence,
     _load_config,
-    _profile_display_name,
-    _resolve_config_path,
-    _summarize_events,
     _print_events,
+    _profile_display_name,
+    _profile_metadata,
+    _resolve_config_path,
+    _resolve_safety_settings,
+    _summarize_events,
 )
 
 
@@ -34,6 +36,17 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _default_safety_args() -> argparse.Namespace:
+    return argparse.Namespace(
+        countdown_seconds=None,
+        no_countdown=False,
+        max_runtime_seconds=None,
+        stop_key=None,
+        no_stop_key=False,
+        require_enter=False,
+    )
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = _build_arg_parser()
     args = parser.parse_args(argv)
@@ -50,8 +63,14 @@ def main(argv: list[str] | None = None) -> None:
     config_path = _resolve_config_path(PROJECT_ROOT, config=config, profile=profile)
     config_data = _load_config(config_path)
     events = _build_sequence(config_data)
+    metadata = _profile_metadata(config_data, config_path)
+    safety = _resolve_safety_settings(config_data, _default_safety_args())
 
     print(f"Config OK: {_profile_display_name(PROJECT_ROOT, config_path)}")
+    print(f"Profile: {metadata['name']} | Risk: {metadata['risk_level']}")
+    if metadata["description"]:
+        print(f"Description: {metadata['description']}")
+    print(f"Safety: countdown={safety['countdown_seconds']}s max_runtime={safety['max_runtime_seconds']}s stop_key={safety['stop_key']}")
     print(_summarize_events(events))
     if args.show_events:
         _print_events(events)
