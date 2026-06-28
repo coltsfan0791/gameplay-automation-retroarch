@@ -9,8 +9,9 @@ This folder contains a staged automation framework for controlling RetroArch ext
 - `src/input/vgamepad_backend.py`: Windows virtual gamepad backend using `vgamepad`.
 - `src/perception/screenshot_backend.py`: diagnostic screenshot capture backend.
 - `src/perception/image_diagnostics.py`: read-only image stats/crop/compare helpers.
+- `src/perception/regions.py`: reusable named screen region parsing and validation.
 - `src/scenarios/scripted_playback.py`: YAML-driven input sequence/profile replay runner.
-- `config/default.yaml`: default timing, macro, safety, perception, and logging config.
+- `config/default.yaml`: default timing, macro, safety, perception, region, and logging config.
 - `profiles/`: reusable playback profile YAML files.
 - `logs/`: runtime JSONL traces and ignored local diagnostic output.
 
@@ -30,11 +31,14 @@ Read these before starting the next phase:
 ```text
 docs/AUDIT_AND_ROADMAP.md
 docs/AGENT_MODE_PLAYBOOK.md
+docs/REGIONS.md
 ```
 
 `AUDIT_AND_ROADMAP.md` summarizes completed phases, known findings, and the optimized remaining phase order.
 
 `AGENT_MODE_PLAYBOOK.md` defines the branch/PR/test loop for future agent-led work.
+
+`REGIONS.md` explains named screen regions and Phase 9 commands.
 
 ## Quick start
 
@@ -63,19 +67,27 @@ python ".\scripts\capture_sample_frame.py" --list-monitors
 python ".\scripts\capture_sample_frame.py" --profile retroarch_menu_test
 ```
 
-5. Run read-only image diagnostics:
+5. List and capture named regions:
+
+```powershell
+python ".\scripts\list_regions.py" --profile retroarch_menu_test
+python ".\scripts\capture_region.py" --profile retroarch_menu_test --region top_left
+```
+
+6. Run read-only image diagnostics:
 
 ```powershell
 python ".\scripts\analyze_image.py" --image "logs\screenshots\sample_frame-YYYYMMDD-HHMMSS.png"
+python ".\scripts\analyze_region.py" --profile retroarch_menu_test --region top_left
 ```
 
-6. Run a profile with normal safety prompts/countdown:
+7. Run a profile with normal safety prompts/countdown:
 
 ```powershell
 python ".\src\scenarios\scripted_playback.py" --profile retroarch_menu_test
 ```
 
-7. Inspect ignored local output in `logs/`.
+8. Inspect ignored local output in `logs/`.
 
 ## Default config mode
 
@@ -102,7 +114,8 @@ Phase 5: profiles and examples complete
 Phase 6: safety and reliability complete
 Phase 7: perception foundation complete
 Phase 8: image diagnostics complete
-Next: Phase 9 named screen regions
+Phase 9: named screen regions complete
+Next: Phase 10 region catalogs
 ```
 
 ## Phase 2: config-driven playback
@@ -331,19 +344,59 @@ sample_frame_before-YYYYMMDD-HHMMSS.png
 sample_frame_after-YYYYMMDD-HHMMSS.png
 ```
 
-## Next phase: Phase 9 named screen regions
+## Phase 9: named screen regions
 
-Phase 9 should add reusable named regions so commands stop relying on one-off coordinates.
+Phase 9 adds reusable named regions so commands stop relying on one-off coordinates.
 
-Expected examples:
+### Region config
+
+```yaml
+regions:
+  top_left:
+    left: 0
+    top: 0
+    width: 320
+    height: 240
+    description: Top-left diagnostic area.
+    tags:
+      - diagnostic
+```
+
+### List regions
 
 ```powershell
 python ".\scripts\list_regions.py" --profile retroarch_menu_test
-python ".\scripts\capture_region.py" --profile retroarch_menu_test --region dialog_box
+python ".\scripts\list_regions.py" --profile retroarch_menu_test --json
+```
+
+### Capture a named region
+
+```powershell
+python ".\scripts\capture_region.py" --profile retroarch_menu_test --region top_left
+python ".\scripts\capture_region.py" --profile retroarch_menu_test --region menu_area
+```
+
+### Analyze a named region
+
+```powershell
 python ".\scripts\analyze_region.py" --profile retroarch_menu_test --region top_left
 ```
 
-Read `docs/AUDIT_AND_ROADMAP.md` before implementing Phase 9.
+### Negative test
+
+```powershell
+python ".\scripts\capture_region.py" --profile retroarch_menu_test --region does_not_exist
+```
+
+Expected behavior: fail clearly and show available region names.
+
+No OCR, template matching, conditional waits, image-driven actions, or autonomy are included.
+
+## Next phase: Phase 10 region catalogs
+
+Phase 10 should organize named regions into reusable region sets for different emulator/game layouts.
+
+Read `docs/AUDIT_AND_ROADMAP.md` and `docs/REGIONS.md` before implementing Phase 10.
 
 ## Included profiles
 
