@@ -69,8 +69,10 @@ def _cli_region(args: argparse.Namespace) -> ScreenshotRegion | None:
 
 
 def _snapshot_prefix(base_prefix: str, suffix: str) -> str:
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
-    return f"{base_prefix}_{suffix}_{stamp}"
+    # MssScreenshotBackend already appends a UTC timestamp. Keep this prefix stable
+    # so filenames read as sample_frame_before-YYYYMMDD-HHMMSS.png instead of
+    # sample_frame_before_YYYYMMDD-HHMMSS-YYYYMMDD-HHMMSS.png.
+    return f"{base_prefix}_{suffix}"
 
 
 def main(argv: list[str] | None = None) -> None:
