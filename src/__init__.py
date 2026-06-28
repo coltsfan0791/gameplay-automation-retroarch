@@ -1,0 +1,1 @@
+"""Automation source package."""
