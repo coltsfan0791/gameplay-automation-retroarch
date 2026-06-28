@@ -14,6 +14,23 @@ input:
     down: DPAD_DOWN
     left: DPAD_LEFT
     right: DPAD_RIGHT
+    start: START
+    back: BACK
+    select: BACK
+    lb: LEFT_SHOULDER
+    rb: RIGHT_SHOULDER
+    lt: LEFT_TRIGGER
+    rt: RIGHT_TRIGGER
+    ls: LEFT_THUMB
+    rs: RIGHT_THUMB
+    left_stick_up: LEFT_STICK_UP
+    left_stick_down: LEFT_STICK_DOWN
+    left_stick_left: LEFT_STICK_LEFT
+    left_stick_right: LEFT_STICK_RIGHT
+    right_stick_up: RIGHT_STICK_UP
+    right_stick_down: RIGHT_STICK_DOWN
+    right_stick_left: RIGHT_STICK_LEFT
+    right_stick_right: RIGHT_STICK_RIGHT
 
 logging:
   enabled: true
@@ -22,13 +39,15 @@ logging:
 
 playback:
   sequence:
+    - action: start
+      hold_seconds: 0.08
+    - action: down
+      hold_seconds: 0.10
     - action: a
       hold_seconds: 0.08
-    - action: right
-      hold_seconds: 0.10
-    - action: b
+    - action: back
       hold_seconds: 0.08
-    - action: left
+    - action: left_stick_right
+      hold_seconds: 0.20
+    - action: rt
       hold_seconds: 0.10
-    - action: y
-      hold_seconds: 0.08
