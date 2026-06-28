@@ -38,16 +38,44 @@ logging:
   file_prefix: playback
 
 playback:
+  run: menu_wiggle_demo
+  macros:
+    menu_wiggle_demo:
+      - action: start
+        hold_seconds: 0.08
+        note: open RetroArch/game menu
+      - wait_seconds: 0.25
+      - repeat: 2
+        sequence:
+          - action: down
+            hold_seconds: 0.08
+          - wait_seconds: 0.08
+      - chord:
+          - lb
+          - rb
+        hold_seconds: 0.10
+        note: example two-button chord
+      - action: back
+        hold_seconds: 0.08
+      - action: left_stick_right
+        hold_seconds: 0.20
+      - action: rt
+        hold_seconds: 0.10
+
+    legacy_demo:
+      - action: a
+        hold_seconds: 0.08
+      - action: right
+        hold_seconds: 0.10
+      - action: b
+        hold_seconds: 0.08
+      - action: left
+        hold_seconds: 0.10
+      - action: y
+        hold_seconds: 0.08
+
+  # Legacy Stage 2 format is still supported.
+  # If 'run' is removed, this direct sequence will be used.
   sequence:
-    - action: start
-      hold_seconds: 0.08
-    - action: down
-      hold_seconds: 0.10
     - action: a
       hold_seconds: 0.08
-    - action: back
-      hold_seconds: 0.08
-    - action: left_stick_right
-      hold_seconds: 0.20
-    - action: rt
-      hold_seconds: 0.10

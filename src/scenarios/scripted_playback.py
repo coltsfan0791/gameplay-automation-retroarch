@@ -51,32 +51,132 @@ def _build_sequence(config: dict[str, Any]) -> list[ActionEvent]:
     if not isinstance(playback, dict):
         raise ValueError("Invalid 'playback' section: expected a mapping")
 
+    macros = playback.get("macros", {})
+    if macros is None:
+        macros = {}
+    if not isinstance(macros, dict):
+        raise ValueError("'playback.macros' must be a mapping when provided")
+
+    selected_macro = playback.get("run", playback.get("macro"))
+    if selected_macro is not None:
+        if not isinstance(selected_macro, str) or not selected_macro.strip():
+            raise ValueError("'playback.run' must be a non-empty macro name")
+        return _expand_macro(selected_macro.strip(), macros, stack=[])
+
     raw_sequence = playback.get("sequence")
     if raw_sequence is None or raw_sequence == []:
         print("No 'playback.sequence' found. Using fallback demo sequence.")
         return list(FALLBACK_SEQUENCE)
 
+    return _expand_sequence(raw_sequence, macros, path="playback.sequence", stack=[])
+
+
+def _expand_macro(
+    name: str,
+    macros: dict[str, Any],
+    stack: list[str],
+) -> list[ActionEvent]:
+    if name in stack:
+        chain = " -> ".join([*stack, name])
+        raise ValueError(f"Recursive macro reference detected: {chain}")
+
+    raw_sequence = macros.get(name)
+    if raw_sequence is None:
+        available = ", ".join(sorted(macros)) or "<none>"
+        raise ValueError(f"Unknown macro '{name}'. Available macros: {available}")
+
+    return _expand_sequence(
+        raw_sequence,
+        macros,
+        path=f"playback.macros.{name}",
+        stack=[*stack, name],
+    )
+
+
+def _expand_sequence(
+    raw_sequence: Any,
+    macros: dict[str, Any],
+    path: str,
+    stack: list[str],
+) -> list[ActionEvent]:
     if not isinstance(raw_sequence, list):
-        raise ValueError("'playback.sequence' must be a list")
+        raise ValueError(f"'{path}' must be a list")
 
     events: list[ActionEvent] = []
     for index, step in enumerate(raw_sequence, start=1):
-        if not isinstance(step, dict):
-            raise ValueError(f"Sequence step #{index} must be a mapping")
-
-        action = step.get("action")
-        if not isinstance(action, str) or not action.strip():
-            raise ValueError(f"Sequence step #{index} has invalid 'action'")
-
-        hold = step.get("hold_seconds", 0.05)
-        if not isinstance(hold, (int, float)):
-            raise ValueError(f"Sequence step #{index} has invalid 'hold_seconds'")
-        if hold < 0:
-            raise ValueError(f"Sequence step #{index} has negative 'hold_seconds'")
-
-        events.append(ActionEvent(action=action.strip(), hold_seconds=float(hold)))
+        events.extend(_expand_step(step, macros, f"{path}[{index}]", stack))
 
     return events
+
+
+def _expand_step(
+    step: Any,
+    macros: dict[str, Any],
+    path: str,
+    stack: list[str],
+) -> list[ActionEvent]:
+    if not isinstance(step, dict):
+        raise ValueError(f"{path} must be a mapping")
+
+    if "repeat" in step:
+        count = _resolve_repeat_count(step.get("repeat"), path)
+        nested = step.get("sequence", step.get("steps"))
+        if nested is None:
+            raise ValueError(f"{path} repeat step requires 'sequence' or 'steps'")
+        expanded_once = _expand_sequence(nested, macros, f"{path}.sequence", stack)
+        return expanded_once * count
+
+    macro_name = step.get("use_macro", step.get("macro"))
+    if macro_name is not None:
+        if not isinstance(macro_name, str) or not macro_name.strip():
+            raise ValueError(f"{path}.use_macro must be a non-empty macro name")
+        return _expand_macro(macro_name.strip(), macros, stack)
+
+    if "wait_seconds" in step or "wait" in step:
+        seconds = step.get("wait_seconds", step.get("wait"))
+        return [ActionEvent(action="wait", hold_seconds=_resolve_duration(seconds, path, "wait_seconds"))]
+
+    if "chord" in step:
+        chord = step["chord"]
+        if not isinstance(chord, list) or not chord:
+            raise ValueError(f"{path}.chord must be a non-empty list of action names")
+        actions = []
+        for action_index, action in enumerate(chord, start=1):
+            if not isinstance(action, str) or not action.strip():
+                raise ValueError(f"{path}.chord[{action_index}] must be a non-empty string")
+            actions.append(action.strip())
+        hold = _resolve_hold(step, path)
+        return [ActionEvent(action="+".join(actions), hold_seconds=hold)]
+
+    action = step.get("action")
+    if not isinstance(action, str) or not action.strip():
+        raise ValueError(f"{path} has invalid 'action'")
+
+    hold = _resolve_hold(step, path)
+    return [ActionEvent(action=action.strip(), hold_seconds=hold)]
+
+
+def _resolve_repeat_count(value: Any, path: str) -> int:
+    if not isinstance(value, int):
+        raise ValueError(f"{path}.repeat must be an integer")
+    if value < 1:
+        raise ValueError(f"{path}.repeat must be at least 1")
+    if value > 10_000:
+        raise ValueError(f"{path}.repeat is too large; refusing to expand more than 10,000 repeats")
+    return value
+
+
+def _resolve_hold(step: dict[str, Any], path: str) -> float:
+    value = step.get("hold_seconds", step.get("seconds", 0.05))
+    return _resolve_duration(value, path, "hold_seconds")
+
+
+def _resolve_duration(value: Any, path: str, field_name: str) -> float:
+    if not isinstance(value, (int, float)):
+        raise ValueError(f"{path}.{field_name} must be a number")
+    if value < 0:
+        raise ValueError(f"{path}.{field_name} must be non-negative")
+    return float(value)
 
 
 def _resolve_log_path(project_root: Path, config: dict[str, Any]) -> Path | None:
