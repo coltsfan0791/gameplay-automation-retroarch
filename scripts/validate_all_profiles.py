@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
 
@@ -13,8 +14,21 @@ from scenarios.scripted_playback import (  # noqa: E402
     _discover_profiles,
     _load_config,
     _profile_display_name,
+    _profile_metadata,
+    _resolve_safety_settings,
     _summarize_events,
 )
+
+
+def _default_safety_args() -> argparse.Namespace:
+    return argparse.Namespace(
+        countdown_seconds=None,
+        no_countdown=False,
+        max_runtime_seconds=None,
+        stop_key=None,
+        no_stop_key=False,
+        require_enter=False,
+    )
 
 
 def main() -> None:
@@ -28,6 +42,8 @@ def main() -> None:
         try:
             config = _load_config(target)
             events = _build_sequence(config)
+            metadata = _profile_metadata(config, target)
+            safety = _resolve_safety_settings(config, _default_safety_args())
         except Exception as exc:  # noqa: BLE001 - CLI validator should report all profile failures.
             failures.append(f"{display}: {exc}")
             print(f"FAIL: {display}")
@@ -35,6 +51,10 @@ def main() -> None:
             continue
 
         print(f"OK: {display}")
+        print(f"  Profile: {metadata['name']} | Risk: {metadata['risk_level']}")
+        if metadata["description"]:
+            print(f"  Description: {metadata['description']}")
+        print(f"  Safety: countdown={safety['countdown_seconds']}s max_runtime={safety['max_runtime_seconds']}s stop_key={safety['stop_key']}")
         for line in _summarize_events(events).splitlines():
             print(f"  {line}")
 
