@@ -64,7 +64,7 @@ fix stuff
 
 Every PR should include:
 
-```markdown
+````markdown
 ## Summary
 
 What changed.
@@ -95,7 +95,8 @@ python ".\scripts\validate_all_profiles.py"
 ## Not included yet
 
 - Explicit deferred features.
-```
+
+````
 
 ## Safety boundaries by layer
 
