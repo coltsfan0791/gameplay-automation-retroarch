@@ -2,6 +2,16 @@
 
 This folder contains a staged automation framework for controlling RetroArch externally.
 
+## Start here
+
+For the combined one-file reference, read:
+
+```text
+docs/PROJECT_INFO_PACKAGE.md
+```
+
+That package combines project status, setup commands, completed phases, current capabilities, safety boundaries, the agent-mode workflow, roadmap, and troubleshooting notes.
+
 ## Architecture
 
 - `src/core/interfaces.py`: shared contracts for input adapters and perception adapters.
@@ -28,9 +38,12 @@ This folder contains a staged automation framework for controlling RetroArch ext
 Read these before starting the next phase:
 
 ```text
+docs/PROJECT_INFO_PACKAGE.md
 docs/AUDIT_AND_ROADMAP.md
 docs/AGENT_MODE_PLAYBOOK.md
 ```
+
+`PROJECT_INFO_PACKAGE.md` is the single consolidated quick-reference package.
 
 `AUDIT_AND_ROADMAP.md` summarizes completed phases, known findings, and the optimized remaining phase order.
 
@@ -343,7 +356,7 @@ python ".\scripts\capture_region.py" --profile retroarch_menu_test --region dial
 python ".\scripts\analyze_region.py" --profile retroarch_menu_test --region top_left
 ```
 
-Read `docs/AUDIT_AND_ROADMAP.md` before implementing Phase 9.
+Read `docs/PROJECT_INFO_PACKAGE.md` before implementing Phase 9.
 
 ## Included profiles
 
