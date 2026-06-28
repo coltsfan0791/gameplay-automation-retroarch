@@ -7,7 +7,7 @@ This folder contains a staged automation framework for controlling RetroArch ext
 - `src/core/interfaces.py`: shared contracts for input adapters and perception adapters.
 - `src/core/scheduler.py`: deterministic frame-timed control loop.
 - `src/input/vgamepad_backend.py`: Windows virtual gamepad backend using `vgamepad`.
-- `src/scenarios/scripted_playback.py`: predefined input sequence replay runner.
+- `src/scenarios/scripted_playback.py`: YAML-driven input sequence replay runner.
 - `config/default.yaml`: timing, backend, and mapping defaults.
 - `logs/`: runtime JSONL traces for validation and replay comparison.
 
@@ -22,7 +22,7 @@ This folder contains a staged automation framework for controlling RetroArch ext
 1. Install dependencies:
 
 ```powershell
-pip install vgamepad
+pip install vgamepad pyyaml
 ```
 
 2. Run scripted playback:
@@ -32,3 +32,18 @@ python "g:/VSC projects/gameplay-automation-retroarch/src/scenarios/scripted_pla
 ```
 
 3. Inspect logs in `g:/VSC projects/gameplay-automation-retroarch/logs/`.
+
+## Stage 2 config-driven playback
+
+The playback sequence now comes from `config/default.yaml` under `playback.sequence`:
+
+```yaml
+playback:
+	sequence:
+		- action: a
+			hold_seconds: 0.08
+		- action: right
+			hold_seconds: 0.10
+```
+
+The runner also reads `runtime.target_fps` and logging settings from the same file.

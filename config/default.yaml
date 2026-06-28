@@ -19,3 +19,16 @@ logging:
   enabled: true
   folder: logs
   file_prefix: playback
+
+playback:
+  sequence:
+    - action: a
+      hold_seconds: 0.08
+    - action: right
+      hold_seconds: 0.10
+    - action: b
+      hold_seconds: 0.08
+    - action: left
+      hold_seconds: 0.10
+    - action: y
+      hold_seconds: 0.08
