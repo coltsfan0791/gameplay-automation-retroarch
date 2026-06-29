@@ -10,15 +10,12 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from perception.config import resolve_screenshot_config  # noqa: E402
-from scenarios.scripted_playback import (  # noqa: E402
-    _build_sequence,
-    _discover_profiles,
-    _load_config,
-    _profile_display_name,
-    _profile_metadata,
-    _resolve_safety_settings,
-    _summarize_events,
-)
+from scenarios.scripted_playback import (_build_sequence,  # noqa: E402
+                                         _discover_profiles, _load_config,
+                                         _profile_display_name,
+                                         _profile_metadata,
+                                         _resolve_safety_settings,
+                                         _summarize_events)
 
 
 def _default_safety_args() -> argparse.Namespace:

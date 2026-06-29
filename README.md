@@ -94,6 +94,7 @@ python ".\src\scenarios\scripted_playback.py" --profile retroarch_menu_test
 - `docs/SAFETY.md`
 - `docs/TROUBLESHOOTING.md`
 - `docs/ROADMAP.md`
+- `docs/REGIONS.md`
 - `docs/PROJECT_INFO_PACKAGE.md`
 - `docs/AGENT_MODE_PLAYBOOK.md`
 - `docs/VERIFICATION.md`
@@ -298,6 +299,55 @@ python ".\scripts\capture_sample_frame.py" --profile retroarch_menu_test --left 
 ```
 
 Capture writes a PNG and a JSON metadata file under `logs/screenshots/` by default. Those outputs are ignored by Git.
+
+## Phase 9: named screen regions
+
+Phase 9 adds a reusable named region system so you can define screen areas in YAML once and refer to them by name.
+
+### Define regions in config/profile
+
+```yaml
+regions:
+  full_screen:
+    left: 0
+    top: 0
+    width: 1366
+    height: 768
+  menu_area:
+    left: 200
+    top: 100
+    width: 966
+    height: 568
+```
+
+### List regions
+
+```powershell
+python ".\scripts\list_regions.py" --profile retroarch_menu_test
+python ".\scripts\list_regions.py" --profile retroarch_menu_test --validate
+```
+
+### Capture a region by name
+
+```powershell
+python ".\scripts\capture_region.py" --profile retroarch_menu_test --region menu_area
+```
+
+### Capture with legacy CLI coordinates
+
+```powershell
+python ".\scripts\capture_region.py" --profile retroarch_menu_test --left 200 --top 100 --width 966 --height 568
+```
+
+### Analyze a region (fresh capture or existing image)
+
+```powershell
+python ".\scripts\analyze_region.py" --profile retroarch_menu_test --region full_screen
+python ".\scripts\analyze_region.py" --profile retroarch_menu_test --region menu_area --image "logs/screenshots/menu_area-*.png"
+python ".\scripts\analyze_region.py" --profile retroarch_menu_test --region full_screen --json
+```
+
+For full documentation see `docs/REGIONS.md`.
 
 ## Included profiles
 

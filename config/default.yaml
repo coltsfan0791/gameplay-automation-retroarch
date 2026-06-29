@@ -29,6 +29,27 @@ perception:
     #   width: 1280
     #   height: 720
 
+# Named screen regions (Phase 9).
+# These are used by scripts/list_regions.py, scripts/capture_region.py,
+# and scripts/analyze_region.py.  Adjust coordinates to match your
+# monitor resolution and emulator window position.
+regions:
+  full_screen:
+    left: 0
+    top: 0
+    width: 1366
+    height: 768
+  menu_area:
+    left: 200
+    top: 100
+    width: 966
+    height: 568
+  dialog_box:
+    left: 100
+    top: 520
+    width: 1160
+    height: 180
+
 input:
   backend: vgamepad
   device: xbox360
