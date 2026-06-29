@@ -2,13 +2,26 @@
 
 This folder contains a staged automation framework for controlling RetroArch externally.
 
+## What this project does
+
+- Runs deterministic, YAML-defined controller macros for offline RetroArch/emulator workflows.
+- Validates config/profile YAML before live playback.
+- Provides safe dry-run and safety guards (countdown, max runtime, emergency stop).
+- Captures diagnostic screenshots and image diagnostics for perception groundwork.
+
+## What this project does not do yet
+
+- OCR-driven gameplay logic.
+- Autonomous decision-making loops.
+- Online/multiplayer automation.
+- Anti-cheat bypassing or hidden automation.
+
 ## Architecture
 
 - `src/core/interfaces.py`: shared contracts for input adapters and perception adapters.
 - `src/core/scheduler.py`: deterministic frame-timed control loop with safety guards.
 - `src/input/vgamepad_backend.py`: Windows virtual gamepad backend using `vgamepad`.
 - `src/perception/screenshot_backend.py`: diagnostic screenshot capture backend.
-- `src/perception/image_diagnostics.py`: read-only image stats/crop/compare helpers.
 - `src/scenarios/scripted_playback.py`: YAML-driven input sequence/profile replay runner.
 - `config/default.yaml`: default timing, macro, safety, perception, and logging config.
 - `profiles/`: reusable playback profile YAML files.
@@ -23,59 +36,68 @@ This folder contains a staged automation framework for controlling RetroArch ext
 - Keep profiles code-only: no ROMs, BIOS files, save states, screenshots, or private logs.
 - Prefer safe, testable, reversible steps before adding autonomy.
 
-## Audit and roadmap docs
-
-Read these before starting the next phase:
-
-```text
-docs/AUDIT_AND_ROADMAP.md
-docs/AGENT_MODE_PLAYBOOK.md
-```
-
-`AUDIT_AND_ROADMAP.md` summarizes completed phases, known findings, and the optimized remaining phase order.
-
-`AGENT_MODE_PLAYBOOK.md` defines the branch/PR/test loop for future agent-led work.
-
 ## Quick start
 
 1. Install dependencies:
 
 ```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
 ```
 
-2. List available profiles:
+1. Validate default config:
+
+```powershell
+python ".\scripts\validate_config.py" --config config/default.yaml
+```
+
+1. Validate all profiles:
+
+```powershell
+python ".\scripts\validate_all_profiles.py" --profiles profiles
+```
+
+1. List available profiles:
 
 ```powershell
 python ".\src\scenarios\scripted_playback.py" --list-profiles
 ```
 
-3. Dry-run a profile without pressing controller buttons:
+1. Dry-run a profile without pressing controller buttons:
 
 ```powershell
 python ".\src\scenarios\scripted_playback.py" --profile retroarch_menu_test --dry-run --show-events
 ```
 
-4. Capture a diagnostic frame without pressing controller buttons:
+1. Capture a diagnostic frame without pressing controller buttons:
 
 ```powershell
 python ".\scripts\capture_sample_frame.py" --list-monitors
 python ".\scripts\capture_sample_frame.py" --profile retroarch_menu_test
 ```
 
-5. Run read-only image diagnostics:
-
-```powershell
-python ".\scripts\analyze_image.py" --image "logs\screenshots\sample_frame-YYYYMMDD-HHMMSS.png"
-```
-
-6. Run a profile with normal safety prompts/countdown:
+1. Run a profile with normal safety prompts/countdown:
 
 ```powershell
 python ".\src\scenarios\scripted_playback.py" --profile retroarch_menu_test
 ```
 
-7. Inspect ignored local output in `logs/`.
+1. Inspect ignored local output in `logs/`.
+
+## Documentation index
+
+- `docs/QUICKSTART.md`
+- `docs/PROFILE_SCHEMA.md`
+- `docs/PERCEPTION.md`
+- `docs/IMAGE_DIAGNOSTICS.md`
+- `docs/SAFETY.md`
+- `docs/TROUBLESHOOTING.md`
+- `docs/ROADMAP.md`
+- `docs/REGIONS.md`
+- `docs/PROJECT_INFO_PACKAGE.md`
+- `docs/AGENT_MODE_PLAYBOOK.md`
+- `docs/VERIFICATION.md`
 
 ## Default config mode
 
@@ -89,20 +111,6 @@ You can also point directly to a config file:
 
 ```powershell
 python ".\src\scenarios\scripted_playback.py" --config config/default.yaml
-```
-
-## Current phase status
-
-```text
-Phase 1: scaffold complete
-Phase 2: YAML macro runner complete
-Phase 3: expanded controller backend complete
-Phase 4: macro QoL complete
-Phase 5: profiles and examples complete
-Phase 6: safety and reliability complete
-Phase 7: perception foundation complete
-Phase 8: image diagnostics complete
-Next: Phase 9 named screen regions
 ```
 
 ## Phase 2: config-driven playback
@@ -292,58 +300,54 @@ python ".\scripts\capture_sample_frame.py" --profile retroarch_menu_test --left 
 
 Capture writes a PNG and a JSON metadata file under `logs/screenshots/` by default. Those outputs are ignored by Git.
 
-## Phase 8: image diagnostics
+## Phase 9: named screen regions
 
-Phase 8 adds read-only image utilities for captured screenshots.
+Phase 9 adds a reusable named region system so you can define screen areas in YAML once and refer to them by name.
 
-No OCR, template matching, or image-driven decisions are included.
+### Define regions in config/profile
 
-### Image stats
-
-```powershell
-python ".\scripts\analyze_image.py" --image "logs\screenshots\sample_frame-YYYYMMDD-HHMMSS.png"
+```yaml
+regions:
+  full_screen:
+    left: 0
+    top: 0
+    width: 1366
+    height: 768
+  menu_area:
+    left: 200
+    top: 100
+    width: 966
+    height: 568
 ```
 
-### Crop a diagnostic region
-
-```powershell
-python ".\scripts\analyze_image.py" --image "logs\screenshots\sample_frame-YYYYMMDD-HHMMSS.png" --crop-output "logs\screenshots\crop.png" --left 0 --top 0 --width 320 --height 240
-```
-
-### Compare two screenshots
-
-```powershell
-python ".\scripts\analyze_image.py" --baseline "logs\screenshots\before.png" --candidate "logs\screenshots\after.png" --json-output "logs\screenshots\comparison.json"
-```
-
-### Capture before/after around a profile
-
-```powershell
-python ".\scripts\capture_profile_snapshots.py" --profile retroarch_menu_test --no-countdown
-```
-
-That command captures a before image, runs the selected profile using the existing safety layer, captures an after image, and writes a comparison JSON report. The report does not affect gameplay.
-
-After the audit cleanup, before/after filenames use a single timestamp:
-
-```text
-sample_frame_before-YYYYMMDD-HHMMSS.png
-sample_frame_after-YYYYMMDD-HHMMSS.png
-```
-
-## Next phase: Phase 9 named screen regions
-
-Phase 9 should add reusable named regions so commands stop relying on one-off coordinates.
-
-Expected examples:
+### List regions
 
 ```powershell
 python ".\scripts\list_regions.py" --profile retroarch_menu_test
-python ".\scripts\capture_region.py" --profile retroarch_menu_test --region dialog_box
-python ".\scripts\analyze_region.py" --profile retroarch_menu_test --region top_left
+python ".\scripts\list_regions.py" --profile retroarch_menu_test --validate
 ```
 
-Read `docs/AUDIT_AND_ROADMAP.md` before implementing Phase 9.
+### Capture a region by name
+
+```powershell
+python ".\scripts\capture_region.py" --profile retroarch_menu_test --region menu_area
+```
+
+### Capture with legacy CLI coordinates
+
+```powershell
+python ".\scripts\capture_region.py" --profile retroarch_menu_test --left 200 --top 100 --width 966 --height 568
+```
+
+### Analyze a region (fresh capture or existing image)
+
+```powershell
+python ".\scripts\analyze_region.py" --profile retroarch_menu_test --region full_screen
+python ".\scripts\analyze_region.py" --profile retroarch_menu_test --region menu_area --image "logs/screenshots/menu_area-*.png"
+python ".\scripts\analyze_region.py" --profile retroarch_menu_test --region full_screen --json
+```
+
+For full documentation see `docs/REGIONS.md`.
 
 ## Included profiles
 

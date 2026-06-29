@@ -10,15 +10,12 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from perception.config import resolve_screenshot_config  # noqa: E402
-from scenarios.scripted_playback import (  # noqa: E402
-    _build_sequence,
-    _discover_profiles,
-    _load_config,
-    _profile_display_name,
-    _profile_metadata,
-    _resolve_safety_settings,
-    _summarize_events,
-)
+from scenarios.scripted_playback import (_build_sequence,  # noqa: E402
+                                         _discover_profiles, _load_config,
+                                         _profile_display_name,
+                                         _profile_metadata,
+                                         _resolve_safety_settings,
+                                         _summarize_events)
 
 
 def _default_safety_args() -> argparse.Namespace:
@@ -32,8 +29,49 @@ def _default_safety_args() -> argparse.Namespace:
     )
 
 
+def _build_arg_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Validate default config plus profile YAML files without sending input."
+    )
+    parser.add_argument(
+        "--profiles",
+        default="profiles",
+        help="Profiles directory to scan (relative to repo root or absolute). Default: profiles",
+    )
+    parser.add_argument(
+        "--config",
+        default="config/default.yaml",
+        help="Default config path to validate before profile files. Default: config/default.yaml",
+    )
+    return parser
+
+
+def _resolve_path(project_root: Path, raw_path: str) -> Path:
+    path = Path(raw_path).expanduser()
+    if path.is_absolute():
+        return path
+    return project_root / path
+
+
+def _discover_profiles_in_dir(profiles_dir: Path) -> list[Path]:
+    if not profiles_dir.exists():
+        return []
+
+    profiles: list[Path] = []
+    for suffix in (".yaml", ".yml"):
+        profiles.extend(profiles_dir.rglob(f"*{suffix}"))
+
+    return sorted(path for path in profiles if path.is_file())
+
+
 def main() -> None:
-    targets = [PROJECT_ROOT / "config" / "default.yaml", *_discover_profiles(PROJECT_ROOT)]
+    args = _build_arg_parser().parse_args()
+
+    config_path = _resolve_path(PROJECT_ROOT, args.config)
+    profiles_dir = _resolve_path(PROJECT_ROOT, args.profiles)
+    profile_targets = _discover_profiles_in_dir(profiles_dir)
+    targets = [config_path, *profile_targets]
+
     if not targets:
         raise SystemExit("No configs or profiles found.")
 
